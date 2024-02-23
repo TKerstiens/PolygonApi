@@ -14,10 +14,10 @@ public class RestApiBase
 	private readonly string _apiUrlBase = "https://api.polygon.io";
 
 	private readonly string _apiKey;
-    private readonly HttpClient _httpClient;
-    private readonly ILogger<RestApiBase> _logger;
+	private readonly HttpClient _httpClient;
+	private readonly ILogger<RestApiBase> _logger;
 
-    /// <summary>
+	/// <summary>
 	/// Initializes a new instance of the <see cref="Stocks"/> class for interacting with stock data.
 	/// </summary>
 	/// <param name="apiKey">The API key used for authenticating requests to the Polygon.io API.</param>
@@ -27,31 +27,31 @@ public class RestApiBase
 	/// This constructor initializes the Stocks class with necessary dependencies for making API calls and logging.
 	/// The <paramref name="httpClient"/> should be configured with any necessary headers or settings for use with the Polygon.io API.
 	/// </remarks>
-    public RestApiBase(string apiKey, HttpClient httpClient, ILogger<RestApiBase>? logger = null)
-    {
-    	_apiKey = apiKey;
+	public RestApiBase(string apiKey, HttpClient httpClient, ILogger<RestApiBase>? logger = null)
+	{
+		_apiKey = apiKey;
 
-        _httpClient = httpClient;
-    	_httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+		_httpClient = httpClient;
+		_httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
 
-    	if(logger == null)
-    	{
-    		using ILoggerFactory loggerFactory = LoggerFactory.Create(builder =>
+		if(logger == null)
+		{
+			using ILoggerFactory loggerFactory = LoggerFactory.Create(builder =>
 			{
-			    builder
-			        .AddConsole();
+				builder
+					.AddConsole();
 			});
 
 			_logger = loggerFactory.CreateLogger<RestApiBase>();
-    	}
-    	else
-    	{
-    		_logger = logger as ILogger<RestApiBase>;
-    	}
-    	
-    }
+		}
+		else
+		{
+			_logger = logger as ILogger<RestApiBase>;
+		}
+		
+	}
 
-    /// <summary>
+	/// <summary>
 	/// Makes a GET request to the specified URI with query parameters derived from the request object.
 	/// </summary>
 	/// <typeparam name="TResponse">The expected response object type.</typeparam>
@@ -63,31 +63,31 @@ public class RestApiBase
 	/// <exception cref="InvalidOperationException">Thrown when JSON cannot be deserialized into <typeparamref name="TResponse"/>.</exception>
 	protected async Task<TResponse> GetRequestAsync<TResponse, TRequest>(string requestUri, TRequest requestParameters)
 	{
-	    // Build the query string from requestParameters
-	    string queryString = BuildQueryString(requestParameters);
-	    string fullUri = $"{_apiUrlBase}{requestUri}";
-	    if(!string.IsNullOrWhiteSpace(queryString))
-	    {
-	    	fullUri += $"?{queryString}";
-	    }
-	    _logger.LogTrace($"Request to: {fullUri}");
+		// Build the query string from requestParameters
+		string queryString = BuildQueryString(requestParameters);
+		string fullUri = $"{_apiUrlBase}{requestUri}";
+		if(!string.IsNullOrWhiteSpace(queryString))
+		{
+			fullUri += $"?{queryString}";
+		}
+		_logger.LogTrace($"Request to: {fullUri}");
 
-	    try
-	    {
-	        HttpResponseMessage response = await _httpClient.GetAsync(fullUri);
-	        response.EnsureSuccessStatusCode();
+		try
+		{
+			HttpResponseMessage response = await _httpClient.GetAsync(fullUri);
+			response.EnsureSuccessStatusCode();
 
-	        string jsonString = await response.Content.ReadAsStringAsync();
-	        TResponse responseObject = JsonSerializer.Deserialize<TResponse>(jsonString, new JsonSerializerOptions())
-	            ?? throw new InvalidOperationException("Failed to deserialize the response to the specified type.");
+			string jsonString = await response.Content.ReadAsStringAsync();
+			TResponse responseObject = JsonSerializer.Deserialize<TResponse>(jsonString, new JsonSerializerOptions())
+				?? throw new InvalidOperationException("Failed to deserialize the response to the specified type.");
 
-	        return responseObject;
-	    }
-	    catch (HttpRequestException e)
-	    {
-	    	_logger.LogError($"Request exception: {e.Message}");
-	        throw;
-	    }
+			return responseObject;
+		}
+		catch (HttpRequestException e)
+		{
+			_logger.LogError($"Request exception: {e.Message}");
+			throw;
+		}
 	}
 
 	/// <summary>
@@ -104,24 +104,24 @@ public class RestApiBase
 	/// </remarks>
 	protected async Task<TResponse> FullUriGetRequestAsync<TResponse, TRequest>(string requestUri)
 	{
-	    _logger.LogTrace($"Request to: {requestUri}");
+		_logger.LogTrace($"Request to: {requestUri}");
 
 		try
-	    {
-	        HttpResponseMessage response = await _httpClient.GetAsync(requestUri);
-	        response.EnsureSuccessStatusCode();
+		{
+			HttpResponseMessage response = await _httpClient.GetAsync(requestUri);
+			response.EnsureSuccessStatusCode();
 
-	        string jsonString = await response.Content.ReadAsStringAsync();
-	        TResponse responseObject = JsonSerializer.Deserialize<TResponse>(jsonString, new JsonSerializerOptions())
-	            ?? throw new InvalidOperationException("Failed to deserialize the response to the specified type.");
+			string jsonString = await response.Content.ReadAsStringAsync();
+			TResponse responseObject = JsonSerializer.Deserialize<TResponse>(jsonString, new JsonSerializerOptions())
+				?? throw new InvalidOperationException("Failed to deserialize the response to the specified type.");
 
-	        return responseObject;
-	    }
-	    catch (HttpRequestException e)
-	    {
-	    	_logger.LogError($"Request exception: {e.Message}");
-	        throw;
-	    }
+			return responseObject;
+		}
+		catch (HttpRequestException e)
+		{
+			_logger.LogError($"Request exception: {e.Message}");
+			throw;
+		}
 	}
 
 	/// <summary>
@@ -135,114 +135,39 @@ public class RestApiBase
 	/// </remarks>
 	private static string BuildQueryString<TRequest>(TRequest requestParameters)
 	{
-	    IEnumerable<string> queryParams = typeof(TRequest).GetProperties()
-	        .Where(prop => prop.GetValue(requestParameters) != null) // Ensure the property value is not null
-		    .Select(prop =>
-		    {
-		        // Attempt to retrieve the QueryParameter attribute, if any
-		        Attributes.QueryParameter? attribute = prop.GetCustomAttribute<Attributes.QueryParameter>();
-		        
-		        // Determine the key: Use the attribute name if available; otherwise, use the lowercase property name
-		        string key = attribute?.Name ?? prop.Name.ToLower();
-		        key = Uri.EscapeDataString(key);
-		        
-		        // Safely get the property value, ensuring it's not null before calling ToString()
-		        var propertyValue = prop.GetValue(requestParameters);
-		        if(propertyValue == null)
-		        {
-		            // Handle the case where the property value is unexpectedly null, if necessary
-		            // For now, we'll skip adding this property to the queryParams collection
-		            return null; // Using null here, will filter out these null entries in a subsequent step
-		        }
-		        
-		        // Escape the value to ensure it's safe for inclusion in a URI
-		        if(propertyValue is string)
-		        {
-		        	string value = Uri.EscapeDataString(propertyValue.ToString()!); // Null and string check above, confident ToString will not return null
+		IEnumerable<string> queryParams = typeof(TRequest).GetProperties()
+			.Where(prop => prop.GetValue(requestParameters) != null) // Ensure the property value is not null
+			.Select(prop =>
+			{
+				// Attempt to retrieve the QueryParameter attribute, if any
+				Attributes.QueryParameter? attribute = prop.GetCustomAttribute<Attributes.QueryParameter>();
+				
+				// Determine the key: Use the attribute name if available; otherwise, use the lowercase property name
+				string key = attribute?.Name ?? prop.Name.ToLower();
+				key = Uri.EscapeDataString(key);
+				
+				// Safely get the property value, ensuring it's not null before calling ToString()
+				var propertyValue = prop.GetValue(requestParameters);
+				if(propertyValue == null)
+				{
+					// Handle the case where the property value is unexpectedly null, if necessary
+					// For now, we'll skip adding this property to the queryParams collection
+					return null; // Using null here, will filter out these null entries in a subsequent step
+				}
+				
+				// Escape the value to ensure it's safe for inclusion in a URI
+				if(propertyValue is string)
+				{
+					string value = Uri.EscapeDataString(propertyValue.ToString()!); // Null and string check above, confident ToString will not return null
 
-		        	return $"{key}={value}";
-		        }
-		        
-		        return null;
-		    })
-		    .OfType<string>()
-		    .ToList();
+					return $"{key}={value}";
+				}
+				
+				return null;
+			})
+			.OfType<string>()
+			.ToList();
 
-	    return string.Join("&", queryParams);
+		return string.Join("&", queryParams);
 	}
-
-    // /// <summary>
-	// /// Makes a GET request to the specified URI and deserializes the response into the expected response object type.
-	// /// </summary>
-	// /// <typeparam name="ResponseObject">The expected response object type.</typeparam>
-	// /// <param name="apiUri">The address, including query parameters, of the resource to be fetched. This URI is appended to the base API URI.</param>
-	// /// <returns>The deserialized response object of type <typeparamref name="ResponseObject"/>.</returns>
-	// /// <exception cref="HttpRequestException">Thrown when the request fails due to an underlying issue with the HTTP request.</exception>
-	// /// <exception cref="InvalidOperationException">Thrown when the response JSON cannot be deserialized into the specified <typeparamref name="ResponseObject"/> type.</exception>
-	// /// <seealso cref="PolygonIO.Rest.ResponseObjects"/>
-    // protected async Task<ResponseObject> GetRequestAsync<ResponseObject>(string apiUri)
-    // {
-    // 	apiUri = _apiUrlBase + apiUri;
-
-    // 	try
-    //     {
-    //         // Make the GET request to the external API
-    //         HttpResponseMessage response = await _httpClient.GetAsync(apiUri);
-    //         response.EnsureSuccessStatusCode();
-
-    //         // Deserialize the JSON response into the TickersResponse object
-    //         string jsonString = await response.Content.ReadAsStringAsync();
-    //         ResponseObject? responseObject = JsonSerializer.Deserialize<ResponseObject>(jsonString, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-	//         if (responseObject == null)
-	//         {
-	//             throw new InvalidOperationException("Failed to deserialize the response to the specified type.");
-	//         }
-
-	//         return responseObject;
-    //     }
-    //     catch (HttpRequestException e)
-    //     {
-    //         Console.WriteLine($"Request exception: {e.Message}");
-    //         throw;
-    //     }
-    // }
-
-    // /// <summary>
-	// /// Builds a URI with query parameters based on the properties of the given request parameters object.
-	// /// </summary>
-	// /// <typeparam name="T">The type of the request parameters object. The properties of this type annotated with <see cref="QueryParamNameAttribute"/> will be used to build the query string.</typeparam>
-	// /// <param name="requestParameters">The request parameters object containing the data to be included in the query string. Each property marked with <see cref="QueryParamNameAttribute"/> contributes to a query parameter, where the attribute's Name defines the parameter name.</param>
-	// /// <param name="baseUri">The base URI to which the query string will be appended.</param>
-	// /// <returns>A string representing the full URI with the query parameters appended.</returns>
-	// /// <remarks>
-	// /// This method inspects the properties of the <typeparamref name="T"/> instance to construct the query string. 
-	// /// Properties without <see cref="QueryParamNameAttribute"/> or with null values are ignored.
-	// /// Values are URL-encoded to ensure the generated URI is valid.
-	// /// </remarks>
-    // protected string BuildUriWithQueryParameters<T>(T requestParameters, string baseUri)
-	// {
-	//     List<string> queryParams = new List<string>();
-
-	//     System.Reflection.PropertyInfo[] properties = typeof(T).GetProperties();
-	//     foreach (System.Reflection.PropertyInfo property in properties)
-	//     {
-	//         QueryParamNameAttribute? attribute = property.GetCustomAttribute<QueryParamNameAttribute>();
-	//         if (attribute != null)
-	//         {
-	//             object? value = property.GetValue(requestParameters);
-	//             if (value != null)
-	//             {
-	//                 // Ensuring a meaningful ToString() representation for strings and other objects, do not include lists and arrays, etc.
-	//                 if (value is string || !(value is IEnumerable<object>)) // Check if it's not a collection
-	//                 {
-	//                     string encodedValue = Uri.EscapeDataString(value.ToString()!);
-	//                     queryParams.Add($"{attribute.Name}={encodedValue}");
-	//                 }
-	//             }
-	//         }
-	//     }
-
-	//     string queryString = string.Join("&", queryParams);
-	//     return $"{baseUri}?{queryString}";
-	// }
 }
